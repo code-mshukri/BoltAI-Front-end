@@ -15,14 +15,19 @@ const StaffDashboard = () => {
   const { user } = useAuth()
   const [salaryPeriod, setSalaryPeriod] = useState('month')
 
-  // Fetch staff schedule
-  const { data: scheduleData, isLoading } = useQuery(
-    'staff-schedule',
-    () => staffService.getStaffSchedule(),
-    {
-      refetchOnWindowFocus: false,
-    }
-  )
+  const today = new Date().toISOString().split('T')[0]
+
+  
+const { data: scheduleData, isLoading } = useQuery(
+  ['staff-today-appointments', user?.id],
+  () => staffService.getStaffSchedule(user?.id, today, today, 'today'),
+  {
+    refetchOnWindowFocus: false,
+    enabled: !!user?.id,  // wait for user to be available
+  }
+)
+
+
 
   // Fetch salary information
   const { data: salaryData, isLoading: isSalaryLoading } = useQuery(
@@ -63,39 +68,11 @@ const StaffDashboard = () => {
     }
   )
 
-  const schedule = scheduleData?.data || {}
-  const todayAppointments = schedule[new Date().toISOString().split('T')[0]] || []
+ const todayAppointments = (scheduleData?.data || []).slice(0, 5)
 
-  const stats = [
-    {
-      title: 'مواعيد اليوم',
-      value: todayAppointments.length,
-      icon: Calendar,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100'
-    },
-    {
-      title: 'المواعيد المكتملة',
-      value: todayAppointments.filter(a => a.status === 'completed').length,
-      icon: CheckCircle,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100'
-    },
-    {
-      title: 'المواعيد المؤكدة',
-      value: todayAppointments.filter(a => a.status === 'confirmed').length,
-      icon: Clock,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100'
-    },
-    {
-      title: 'إجمالي العملاء',
-      value: new Set(todayAppointments.map(a => a.client_name)).size,
-      icon: Users,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100'
-    }
-  ]
+
+
+
 
   const handleCheckIn = () => {
     checkInMutation.mutate()
@@ -251,33 +228,7 @@ const StaffDashboard = () => {
           )}
         </motion.div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon
-            return (
-              <motion.div
-                key={stat.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="card p-6"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-                    <p className="text-3xl font-bold text-gray-900">
-                      <CountUp end={stat.value} duration={2} />
-                    </p>
-                  </div>
-                  <div className={`w-12 h-12 ${stat.bgColor} rounded-full flex items-center justify-center`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
-                  </div>
-                </div>
-              </motion.div>
-            )
-          })}
-        </div>
+        
 
         {/* Today's Appointments */}
         <motion.div
@@ -292,60 +243,52 @@ const StaffDashboard = () => {
             <div className="space-y-4">
               {todayAppointments.map((appointment) => (
                 <div
-                  key={appointment.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  key={appointment.appointment_id}
+                  className="bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
                 >
-                  <div className="flex items-center space-x-4 space-x-reverse">
-                    <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-primary-200" />
+                  <div className="flex flex-col md:flex-row">
+                    {/* Client info section */}
+                    <div className="bg-primary-50 p-4 md:w-1/4 flex items-center">
+                      <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mr-3">
+                        <Calendar className="w-6 h-6 text-primary-200" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900">{appointment.client_name}</h3>
+                        <p className="text-sm text-gray-600">{appointment.time}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{appointment.client_name}</h3>
-                      <p className="text-gray-600 text-sm">{appointment.service_name}</p>
-                      <p className="text-gray-500 text-sm">{appointment.appointment_time}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 space-x-reverse">
-                    <span className={`inline-block px-3 py-1 text-xs rounded-full font-medium ${
-                      appointment.status === 'completed' 
-                        ? 'bg-green-100 text-green-800'
-                        : appointment.status === 'confirmed'
-                        ? 'bg-blue-100 text-blue-800'
-                        : appointment.status === 'in_progress'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {appointment.status === 'completed' && 'مكتمل'}
-                      {appointment.status === 'confirmed' && 'مؤكد'}
-                      {appointment.status === 'in_progress' && 'جاري'}
-                      {appointment.status === 'pending' && 'في الانتظار'}
-                    </span>
                     
-                    {appointment.status !== 'completed' && (
-                      <select
-                        value={appointment.status}
-                        onChange={(e) => {
-                          // Handle status update
-                          staffService.updateBookingStatus(appointment.id, e.target.value)
-                            .then(() => {
-                              toast.success('تم تحديث حالة الموعد')
-                              queryClient.invalidateQueries('staff-schedule')
-                            })
-                            .catch(() => {
-                              toast.error('فشل في تحديث حالة الموعد')
-                            })
-                        }}
-                        className="text-sm border border-gray-300 rounded px-2 py-1"
-                      >
-                        <option value="pending">في الانتظار</option>
-                        <option value="confirmed">مؤكد</option>
-                        <option value="in_progress">جاري</option>
-                        <option value="completed">مكتمل</option>
-                        <option value="cancelled">ملغي</option>
-                        <option value="no_show">لم يحضر</option>
-                      </select>
-                    )}
+                    {/* Service details section */}
+                    <div className="p-4 md:w-2/4 flex flex-col justify-center border-r border-l border-gray-100">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">الخدمة</p>
+                          <p className="font-medium text-gray-800">{appointment.service_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">السعر</p>
+                          <p className="font-medium text-gray-800">{appointment.price} ₪</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Status section */}
+                    <div className="p-4 md:w-1/4 flex items-center justify-center bg-gray-50">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        appointment.status === 'completed'
+                          ? 'bg-green-100 text-green-800'
+                          : appointment.status === 'confirmed'
+                          ? 'bg-blue-100 text-blue-800'
+                          : appointment.status === 'in_progress'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {appointment.status === 'completed' && 'مكتمل'}
+                        {appointment.status === 'confirmed' && 'مؤكد'}
+                        {appointment.status === 'in_progress' && 'جاري'}
+                        {appointment.status === 'pending' && 'في الانتظار'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -357,6 +300,14 @@ const StaffDashboard = () => {
               <p className="text-gray-600">استمتع بيوم هادئ!</p>
             </div>
           )}
+          <div className="text-center mt-6">
+            <a
+              href="/staff/schedule"
+              className="inline-block text-primary-200 hover:text-primary-300 font-medium"
+            >
+              عرض الجدول الكامل →
+            </a>
+          </div>
         </motion.div>
       </div>
 
