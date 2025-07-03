@@ -49,6 +49,7 @@ const DevSidebar = () => {
         { name: 'المواعيد', path: '/admin/appointments', icon: <Calendar /> },
         { name: 'الإعلانات', path: '/admin/announcements', icon: <Bell /> },
         { name: 'الموظفين', path: '/admin/staff', icon: <Users /> },
+        { name: 'التقييمات', path: '/admin/feedback', icon: <Star /> },
         { name: 'الملف الشخصي', path: '/admin/profile', icon: <User /> },
       ]
     },
