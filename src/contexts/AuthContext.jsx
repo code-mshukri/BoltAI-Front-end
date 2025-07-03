@@ -5,9 +5,15 @@ import { toast } from 'react-toastify'
 const AuthContext = createContext()
 
 const initialState = {
-  user: null,
-  isAuthenticated: false,
-  loading: true,
+  user: {
+    id: 1,
+    full_name: 'Development User',
+    role: 'admin',
+    email: 'dev@example.com',
+    csrf_token: 'dev-token'
+  },
+  isAuthenticated: true, // Always authenticated in dev mode
+  loading: false,
   error: null,
 }
 
@@ -41,6 +47,12 @@ const authReducer = (state, action) => {
       }
     case 'CLEAR_ERROR':
       return { ...state, error: null }
+    case 'SET_ROLE':
+      return { 
+        ...state, 
+        user: { ...state.user, role: action.payload },
+        isAuthenticated: true
+      }
     default:
       return state
   }
@@ -49,55 +61,54 @@ const authReducer = (state, action) => {
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState)
 
-  useEffect(() => {
-    const token = localStorage.getItem('auth_token')
-    const userData = localStorage.getItem('user_data')
+  // For development - simulate role change
+  const setRole = (role) => {
+    dispatch({ 
+      type: 'SET_ROLE', 
+      payload: role 
+    });
+    
+    // Store in localStorage for persistence
+    const userData = { ...state.user, role };
+    localStorage.setItem('user_data', JSON.stringify(userData));
+    localStorage.setItem('auth_token', 'dev-token');
+  }
 
-    if (token && userData) {
-      dispatch({ type: 'AUTH_SUCCESS', payload: JSON.parse(userData) })
-    } else {
-      dispatch({ type: 'AUTH_FAILURE', payload: null })
-    }
+  useEffect(() => {
+    // For development, always set a default user
+    const userData = {
+      id: 1,
+      full_name: 'Development User',
+      role: 'admin',
+      email: 'dev@example.com',
+      csrf_token: 'dev-token'
+    };
+    
+    localStorage.setItem('user_data', JSON.stringify(userData));
+    localStorage.setItem('auth_token', 'dev-token');
+    
+    dispatch({ type: 'AUTH_SUCCESS', payload: userData });
   }, [])
 
   const login = async ({ email, password }) => {
     try {
       dispatch({ type: 'AUTH_START' })
 
-      const response = await axios.post(
-        'http://localhost/senior-nooralshams/api/auth/login.php',
-        { email, password },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          withCredentials: true,
-        }
-      )
+      // In development mode, just simulate login
+      const userData = {
+        id: 1,
+        full_name: 'Development User',
+        role: 'admin',
+        email: email || 'dev@example.com',
+        csrf_token: 'dev-token'
+      };
 
-      const res = response.data
+      localStorage.setItem('auth_token', 'dev-token');
+      localStorage.setItem('user_data', JSON.stringify(userData));
 
-      if (res.status === 'success') {
-        const userData = {
-          id: res.user.id,
-          full_name: res.user.full_name,
-          role: res.user.role,
-          email: res.user.email,
-          csrf_token: res.csrf_token,
-        }
-
-        localStorage.setItem('auth_token', res.csrf_token)
-        localStorage.setItem('user_data', JSON.stringify(userData))
-
-        dispatch({ type: 'AUTH_SUCCESS', payload: userData })
-        toast.success('تم تسجيل الدخول بنجاح!')
-        return { success: true, user: userData } // ✅ RETURN FULL USER OBJECT
-      } else {
-        const errorMsg = res.message || 'فشل تسجيل الدخول'
-        dispatch({ type: 'AUTH_FAILURE', payload: errorMsg })
-        toast.error(errorMsg)
-        return { success: false, error: errorMsg }
-      }
+      dispatch({ type: 'AUTH_SUCCESS', payload: userData });
+      toast.success('تم تسجيل الدخول بنجاح!');
+      return { success: true, user: userData };
 
     } catch (error) {
       console.error('Login Error:', error)
@@ -111,20 +122,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       dispatch({ type: 'AUTH_START' })
-      const response = await axios.post(
-        'http://localhost/senior-nooralshams/api/auth/register.php',
-        userData
-      )
-
-      if (response.data.success) {
-        toast.success('تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني')
-        dispatch({ type: 'AUTH_FAILURE', payload: null })
-        return { success: true }
-      } else {
-        dispatch({ type: 'AUTH_FAILURE', payload: response.data.message })
-        toast.error(response.data.message || 'فشل التسجيل')
-        return { success: false }
-      }
+      
+      // In development mode, just simulate registration
+      toast.success('تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني')
+      dispatch({ type: 'AUTH_FAILURE', payload: null })
+      return { success: true }
+      
     } catch (error) {
       dispatch({ type: 'AUTH_FAILURE', payload: 'خطأ في الاتصال بالخادم' })
       toast.error('حدث خطأ في إنشاء الحساب')
@@ -133,10 +136,8 @@ export const AuthProvider = ({ children }) => {
   }
 
   const logout = () => {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('user_data')
-    dispatch({ type: 'LOGOUT' })
-    toast.info('تم تسجيل الخروج بنجاح')
+    // In development mode, we'll keep the user logged in
+    toast.info('تم تسجيل الخروج بنجاح (وضع التطوير)')
   }
 
   const clearError = () => dispatch({ type: 'CLEAR_ERROR' })
@@ -149,6 +150,7 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         clearError,
+        setRole
       }}
     >
       {children}

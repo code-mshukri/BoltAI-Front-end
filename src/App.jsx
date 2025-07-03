@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ui/ErrorBoundary'
 import WhatsAppButton from './components/ui/WhatsAppButton'
 import Header from './components/layout/Header'
 import Footer from './components/layout/Footer'
+import DevSidebar from './components/layout/DevSidebar'
 
 // Lazy load pages
 const LandingPage = React.lazy(() => import('./pages/LandingPage'))
@@ -34,19 +35,10 @@ const StaffDashboard = React.lazy(() => import('./pages/staff/Dashboard'))
 const StaffSchedule = React.lazy(() => import('./pages/staff/Schedule'))
 const StaffProfile = React.lazy(() => import('./pages/staff/Profile'))
 
-
-
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const { user, isAuthenticated, loading } = useAuth()
-
-  if (loading) return <LoadingSpinner />
-  if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (allowedRoles.length && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/" replace />
-  }
-
-  return children
-}
+// Development mode - bypass authentication
+const DevProtectedRoute = ({ children }) => {
+  return children;
+};
 
 const pageVariants = {
   initial: { opacity: 0, x: -20 },
@@ -84,6 +76,7 @@ function App() {
     <ErrorBoundary>
       <div className="min-h-screen gradient-bg">
         <Banner />
+        <DevSidebar />
 
         <AnimatePresence mode="wait">
           <Suspense fallback={<LoadingSpinner />}>
@@ -100,9 +93,9 @@ function App() {
               <Route
                 path="/messages"
                 element={
-                  <ProtectedRoute allowedRoles={['client', 'staff', 'admin']}>
+                  <DevProtectedRoute>
                     {renderMotionPage(MessagesPage)}
-                  </ProtectedRoute>
+                  </DevProtectedRoute>
                 }
               />
 
@@ -110,135 +103,130 @@ function App() {
               <Route
                 path="/client/dashboard"
                 element={
-                  <ProtectedRoute allowedRoles={['client']}>
+                  <DevProtectedRoute>
                     {renderMotionPage(ClientDashboard)}
-                  </ProtectedRoute>
+                  </DevProtectedRoute>
                 }
               />
               <Route
                 path="/client/appointments"
                 element={
-                  <ProtectedRoute allowedRoles={['client']}>
+                  <DevProtectedRoute>
                     {renderMotionPage(ClientAppointments)}
-                  </ProtectedRoute>
+                  </DevProtectedRoute>
                 }
               />
               <Route
                 path="/client/booking"
                 element={
-                  <ProtectedRoute allowedRoles={['client']}>
+                  <DevProtectedRoute>
                     {renderMotionPage(ClientBooking)}
-                  </ProtectedRoute>
+                  </DevProtectedRoute>
                 }
               />
               
               <Route
                 path="/client/profile"
                 element={
-                  <ProtectedRoute allowedRoles={['client']}>
+                  <DevProtectedRoute>
                     {renderMotionPage(ClientProfile)}
-                  </ProtectedRoute>
+                  </DevProtectedRoute>
                 }
               />
 
               <Route
                 path="/client/feedback"
                 element={
-                  <ProtectedRoute allowedRoles={['client']}>
+                  <DevProtectedRoute>
                     {renderMotionPage(ClientFeedback)}
-                  </ProtectedRoute>
+                  </DevProtectedRoute>
                 }
               />
-
-              
 
               {/* Admin Routes */}
             <Route
               path="/admin"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <DevProtectedRoute>
                   {renderMotionPage(AdminDashboard)}
-                </ProtectedRoute>
+                </DevProtectedRoute>
               }
             />
             <Route
               path="/admin/users"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <DevProtectedRoute>
                   {renderMotionPage(AdminUsers)}
-                </ProtectedRoute>
+                </DevProtectedRoute>
               }
             />
             <Route
               path="/admin/services"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <DevProtectedRoute>
                   {renderMotionPage(AdminServices)}
-                </ProtectedRoute>
+                </DevProtectedRoute>
               }
             />
             <Route
               path="/admin/appointments"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <DevProtectedRoute>
                   {renderMotionPage(AdminAppointments)}
-                </ProtectedRoute>
+                </DevProtectedRoute>
               }
             />
             <Route
               path="/admin/profile"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <DevProtectedRoute>
                   {renderMotionPage(AdminProfile)}
-                </ProtectedRoute>
+                </DevProtectedRoute>
               }
             />
             <Route
               path="/admin/announcements"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <DevProtectedRoute>
                   {renderMotionPage(AdminAnnouncements)}
-                </ProtectedRoute>
+                </DevProtectedRoute>
               }
             />
 
             <Route
               path="/admin/staff"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <DevProtectedRoute>
                   {renderMotionPage(AdminStaff)}
-                </ProtectedRoute>
+                </DevProtectedRoute>
               }
             />
 
-            
-
-                          {/* Staff Routes */}
+            {/* Staff Routes */}
             <Route
               path="/staff"
               element={
-                <ProtectedRoute allowedRoles={['staff']}>
+                <DevProtectedRoute>
                   {renderMotionPage(StaffDashboard)}
-                </ProtectedRoute>
+                </DevProtectedRoute>
               }
             />
             <Route
               path="/staff/schedule"
               element={
-                <ProtectedRoute allowedRoles={['staff']}>
+                <DevProtectedRoute>
                   {renderMotionPage(StaffSchedule)}
-                </ProtectedRoute>
+                </DevProtectedRoute>
               }
             />
             <Route
               path="/staff/profile"
               element={
-                <ProtectedRoute allowedRoles={['staff']}>
+                <DevProtectedRoute>
                   {renderMotionPage(StaffProfile)}
-                </ProtectedRoute>
+                </DevProtectedRoute>
               }
             />
-
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
