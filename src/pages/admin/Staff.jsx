@@ -10,14 +10,21 @@ import { useForm } from 'react-hook-form'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import { staffService } from '../../services/staffService'
+import { useAuth } from '../../contexts/AuthContext'
 
 const AdminStaff = () => {
+  const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedStaff, setSelectedStaff] = useState(null)
   const [sortConfig, setSortConfig] = useState({ key: 'full_name', direction: 'asc' })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [selectedStaffSchedule, setSelectedStaffSchedule] = useState(null)
   const queryClient = useQueryClient()
+  const itemsPerPage = 10
 
   const {
     register: registerAdd,
@@ -35,91 +42,45 @@ const AdminStaff = () => {
   } = useForm()
 
   // Fetch staff list
-  const { data: staffData, isLoading, isError, refetch } = useQuery(
-    'staff-list',
-    async () => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      return {
-        status: 'success',
-        data: [
-          {
-            staff_id: 3,
-            full_name: 'Test Staff',
-            email: 'staff@example.com',
-            phone: '0591234567',
-            dob: '1990-01-01',
-            salary_per_hour: 50,
-            notes: 'Specializes in facial treatments',
-            created_at: '2023-05-15'
-          },
-          {
-            staff_id: 4,
-            full_name: 'Lana Khalil',
-            email: 'lana.khalil@example.com',
-            phone: '0591234568',
-            dob: '1992-03-14',
-            salary_per_hour: 60,
-            notes: 'Henna & design specialist',
-            created_at: '2023-06-20'
-          },
-          {
-            staff_id: 5,
-            full_name: 'Maya Odeh',
-            email: 'maya.odeh@example.com',
-            phone: '0599876543',
-            dob: '1988-07-22',
-            salary_per_hour: 55,
-            notes: 'Facial treatment specialist',
-            created_at: '2023-04-10'
-          },
-          {
-            staff_id: 6,
-            full_name: 'Noura Hasan',
-            email: 'noura.hasan@example.com',
-            phone: '0594447777',
-            dob: '1995-11-03',
-            salary_per_hour: 65,
-            notes: 'Laser expert',
-            created_at: '2023-07-05'
-          },
-          {
-            staff_id: 7,
-            full_name: 'Rania Samir',
-            email: 'rania.samir@example.com',
-            phone: '0591122334',
-            dob: '1991-01-30',
-            salary_per_hour: 50,
-            notes: 'Junior stylist',
-            created_at: '2024-01-15'
-          }
-        ]
-      }
-    },
+  const { 
+    data: staffData, 
+    isLoading, 
+    isError, 
+    refetch 
+  } = useQuery(
+    ['staff-list', currentPage],
+    () => staffService.getStaffList(currentPage, itemsPerPage),
     {
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      keepPreviousData: true,
+      onError: (error) => {
+        console.error('Error fetching staff:', error)
+        toast.error('فشل في تحميل بيانات الموظفين')
+      }
+    }
+  )
+
+  // Fetch staff schedule when needed
+  const { 
+    data: scheduleData, 
+    isLoading: isLoadingSchedule,
+    refetch: refetchSchedule
+  } = useQuery(
+    ['staff-schedule', selectedStaffSchedule?.staff_id],
+    () => staffService.getStaffSchedule(selectedStaffSchedule?.staff_id),
+    {
+      enabled: !!selectedStaffSchedule?.staff_id,
+      refetchOnWindowFocus: false,
+      onError: (error) => {
+        console.error('Error fetching schedule:', error)
+        toast.error('فشل في تحميل جدول الموظف')
+      }
     }
   )
 
   // Create staff mutation
   const createStaffMutation = useMutation(
-    async (staffData) => {
-      // Simulate API call
-      console.log('Creating staff:', staffData)
-      await new Promise(resolve => setTimeout(resolve, 800))
-      
-      return {
-        status: 'success',
-        message: 'تم إضافة الموظف بنجاح',
-        data: {
-          staff_id: Math.floor(Math.random() * 1000) + 100,
-          ...staffData,
-          created_at: new Date().toISOString()
-        }
-      }
-    },
+    (staffData) => staffService.createStaff(staffData),
     {
       onSuccess: () => {
         toast.success('تم إضافة الموظف بنجاح')
@@ -135,16 +96,7 @@ const AdminStaff = () => {
 
   // Update staff mutation
   const updateStaffMutation = useMutation(
-    async (staffData) => {
-      // Simulate API call
-      console.log('Updating staff:', staffData)
-      await new Promise(resolve => setTimeout(resolve, 800))
-      
-      return {
-        status: 'success',
-        message: 'تم تحديث بيانات الموظف بنجاح'
-      }
-    },
+    (staffData) => staffService.updateStaffDetails(staffData),
     {
       onSuccess: () => {
         toast.success('تم تحديث بيانات الموظف بنجاح')
@@ -219,6 +171,8 @@ const AdminStaff = () => {
     createStaffMutation.mutate({
       full_name: data.full_name,
       email: data.email,
+      password: data.password,
+      password_confirm: data.password_confirm,
       phone: data.phone,
       dob: data.dob,
       salary_per_hour: parseFloat(data.salary_per_hour),
@@ -231,7 +185,6 @@ const AdminStaff = () => {
     updateStaffMutation.mutate({
       staff_id: selectedStaff.staff_id,
       full_name: data.full_name,
-      email: data.email,
       phone: data.phone,
       dob: data.dob,
       salary_per_hour: parseFloat(data.salary_per_hour),
@@ -256,10 +209,17 @@ const AdminStaff = () => {
   }
 
   // Handle view schedule button click
-  const handleViewSchedule = (staffId) => {
-    // In a real app, this would navigate to the staff schedule page
-    toast.info(`عرض جدول الموظف رقم ${staffId}`)
+  const handleViewSchedule = (staff) => {
+    setSelectedStaffSchedule(staff)
+    refetchSchedule()
+    setShowScheduleModal(true)
   }
+
+  // Calculate total pages
+  const totalPages = useMemo(() => {
+    if (!staffData?.total) return 1
+    return Math.ceil(staffData.total / itemsPerPage)
+  }, [staffData])
 
   return (
     <div className="min-h-screen gradient-bg">
@@ -451,7 +411,7 @@ const AdminStaff = () => {
                             <Edit className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => handleViewSchedule(staff.staff_id)}
+                            onClick={() => handleViewSchedule(staff)}
                             className="text-green-600 hover:text-green-900"
                             title="عرض الجدول"
                           >
@@ -463,6 +423,56 @@ const AdminStaff = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!isLoading && !isError && filteredStaff.length > 0 && (
+            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="btn-outline disabled:opacity-50"
+                >
+                  السابق
+                </button>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="btn-outline disabled:opacity-50"
+                >
+                  التالي
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    عرض <span className="font-medium">{((currentPage - 1) * itemsPerPage) + 1}</span> إلى{' '}
+                    <span className="font-medium">
+                      {Math.min(currentPage * itemsPerPage, staffData?.total || 0)}
+                    </span>{' '}
+                    من <span className="font-medium">{staffData?.total || 0}</span> نتيجة
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          page === currentPage
+                            ? 'z-10 bg-primary-200 border-primary-200 text-white'
+                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+              </div>
             </div>
           )}
         </motion.div>
@@ -516,6 +526,39 @@ const AdminStaff = () => {
                   />
                 </div>
                 {errorsAdd.email && <p className="mt-1 text-sm text-red-600">{errorsAdd.email.message}</p>}
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">كلمة المرور</label>
+                <input
+                  {...registerAdd('password', { 
+                    required: 'كلمة المرور مطلوبة',
+                    minLength: {
+                      value: 6,
+                      message: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'
+                    }
+                  })}
+                  type="password"
+                  className={`input-field ${errorsAdd.password ? 'border-red-500' : ''}`}
+                  placeholder="أدخل كلمة المرور"
+                />
+                {errorsAdd.password && <p className="mt-1 text-sm text-red-600">{errorsAdd.password.message}</p>}
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">تأكيد كلمة المرور</label>
+                <input
+                  {...registerAdd('password_confirm', { 
+                    required: 'تأكيد كلمة المرور مطلوب',
+                    validate: (value, formValues) => value === formValues.password || 'كلمات المرور غير متطابقة'
+                  })}
+                  type="password"
+                  className={`input-field ${errorsAdd.password_confirm ? 'border-red-500' : ''}`}
+                  placeholder="أعد إدخال كلمة المرور"
+                />
+                {errorsAdd.password_confirm && <p className="mt-1 text-sm text-red-600">{errorsAdd.password_confirm.message}</p>}
               </div>
 
               {/* Phone */}
@@ -649,25 +692,18 @@ const AdminStaff = () => {
                 {errorsEdit.full_name && <p className="mt-1 text-sm text-red-600">{errorsEdit.full_name.message}</p>}
               </div>
 
-              {/* Email */}
+              {/* Email (read-only) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">البريد الإلكتروني</label>
                 <div className="relative">
                   <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
-                    {...registerEdit('email', { 
-                      required: 'البريد الإلكتروني مطلوب',
-                      pattern: {
-                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                        message: 'البريد الإلكتروني غير صحيح'
-                      }
-                    })}
+                    {...registerEdit('email')}
                     type="email"
-                    className={`input-field pr-12 ${errorsEdit.email ? 'border-red-500' : ''}`}
-                    placeholder="أدخل البريد الإلكتروني"
+                    disabled
+                    className="input-field pr-12 bg-gray-100 cursor-not-allowed"
                   />
                 </div>
-                {errorsEdit.email && <p className="mt-1 text-sm text-red-600">{errorsEdit.email.message}</p>}
               </div>
 
               {/* Phone */}
@@ -768,6 +804,128 @@ const AdminStaff = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Schedule Modal */}
+      {showScheduleModal && selectedStaffSchedule && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => {
+                setShowScheduleModal(false)
+                setSelectedStaffSchedule(null)
+              }}
+              className="absolute top-4 left-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              جدول {selectedStaffSchedule.full_name}
+            </h2>
+            
+            {isLoadingSchedule ? (
+              <div className="flex justify-center items-center h-64">
+                <LoadingSpinner />
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Weekly Schedule */}
+                <div className="card p-4">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">المواعيد القادمة</h3>
+                  
+                  {scheduleData?.data && Object.keys(scheduleData.data).length > 0 ? (
+                    <div className="space-y-4">
+                      {Object.entries(scheduleData.data)
+                        .sort(([dateA], [dateB]) => new Date(dateA) - new Date(dateB))
+                        .map(([date, appointments]) => (
+                          <div key={date} className="border-b border-gray-200 pb-4 last:border-b-0">
+                            <h4 className="font-bold text-gray-900 mb-3">
+                              {formatDate(date)}
+                            </h4>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {appointments.map((appointment) => (
+                                <div
+                                  key={appointment.appointment_id}
+                                  className="p-3 bg-gray-50 rounded-lg border-r-4 border-primary-200"
+                                >
+                                  <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {appointment.time}
+                                    </span>
+                                    <span className={`text-xs px-2 py-1 rounded-full ${
+                                      appointment.status === 'completed' 
+                                        ? 'bg-green-100 text-green-800'
+                                        : appointment.status === 'confirmed'
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : appointment.status === 'pending'
+                                        ? 'bg-yellow-100 text-yellow-800'
+                                        : 'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {appointment.status === 'completed' && 'مكتمل'}
+                                      {appointment.status === 'confirmed' && 'مؤكد'}
+                                      {appointment.status === 'pending' && 'في الانتظار'}
+                                      {appointment.status === 'cancelled' && 'ملغي'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center space-x-2 space-x-reverse">
+                                    <div className="w-6 h-6 bg-primary-100 rounded-full flex items-center justify-center">
+                                      <User className="w-3 h-3 text-primary-200" />
+                                    </div>
+                                    <p className="text-sm text-gray-700 font-medium">
+                                      {appointment.client_name}
+                                    </p>
+                                  </div>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    {appointment.service_name}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد مواعيد</h3>
+                      <p className="text-gray-600">لا توجد مواعيد مجدولة لهذا الموظف</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Work Statistics */}
+                <div className="card p-4">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">إحصائيات العمل</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="text-sm text-gray-500 mb-1">المواعيد المكتملة</h4>
+                      <p className="text-2xl font-bold text-primary-200">
+                        {scheduleData?.stats?.completed_appointments || 0}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="text-sm text-gray-500 mb-1">ساعات العمل (الشهر)</h4>
+                      <p className="text-2xl font-bold text-primary-200">
+                        {scheduleData?.stats?.monthly_hours || 0}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="text-sm text-gray-500 mb-1">متوسط التقييم</h4>
+                      <p className="text-2xl font-bold text-primary-200">
+                        {scheduleData?.stats?.average_rating || 'غير متوفر'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
