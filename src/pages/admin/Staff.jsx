@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { toast } from 'react-toastify'
 import { 
   Search, Plus, Edit, Eye, RefreshCw, ChevronDown, ChevronUp, 
-  User, Phone, Mail, Calendar, DollarSign, Save, X, Briefcase
+  User, Phone, Mail, Calendar, DollarSign, Save, X, Briefcase,
+  Clock, CheckCircle, XCircle
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import Header from '../../components/layout/Header'
@@ -23,6 +24,8 @@ const AdminStaff = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [selectedStaffSchedule, setSelectedStaffSchedule] = useState(null)
+  const [showSalaryModal, setShowSalaryModal] = useState(false)
+  const [salaryPeriod, setSalaryPeriod] = useState('month')
   const queryClient = useQueryClient()
   const itemsPerPage = 10
 
@@ -74,6 +77,24 @@ const AdminStaff = () => {
       onError: (error) => {
         console.error('Error fetching schedule:', error)
         toast.error('فشل في تحميل جدول الموظف')
+      }
+    }
+  )
+
+  // Fetch staff salary when needed
+  const { 
+    data: salaryData, 
+    isLoading: isLoadingSalary,
+    refetch: refetchSalary
+  } = useQuery(
+    ['staff-salary', selectedStaff?.staff_id, salaryPeriod],
+    () => staffService.getSalaryInfo(selectedStaff?.staff_id, salaryPeriod),
+    {
+      enabled: !!selectedStaff?.staff_id && showSalaryModal,
+      refetchOnWindowFocus: false,
+      onError: (error) => {
+        console.error('Error fetching salary info:', error)
+        toast.error('فشل في تحميل معلومات الراتب')
       }
     }
   )
@@ -213,6 +234,16 @@ const AdminStaff = () => {
     setSelectedStaffSchedule(staff)
     refetchSchedule()
     setShowScheduleModal(true)
+  }
+
+  // Handle view salary button click
+  const handleViewSalary = (staff) => {
+    setSelectedStaff(staff)
+    setSalaryPeriod('month')
+    setShowSalaryModal(true)
+    setTimeout(() => {
+      refetchSalary()
+    }, 100)
   }
 
   // Calculate total pages
@@ -416,6 +447,13 @@ const AdminStaff = () => {
                             title="عرض الجدول"
                           >
                             <Eye className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleViewSalary(staff)}
+                            className="text-yellow-600 hover:text-yellow-900"
+                            title="عرض الراتب"
+                          >
+                            <DollarSign className="w-5 h-5" />
                           </button>
                         </div>
                       </td>
@@ -923,6 +961,176 @@ const AdminStaff = () => {
                       </p>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Staff Salary Modal */}
+      {showSalaryModal && selectedStaff && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl relative">
+            <button
+              onClick={() => {
+                setShowSalaryModal(false)
+                setSelectedStaff(null)
+              }}
+              className="absolute top-4 left-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              معلومات راتب {selectedStaff.full_name}
+            </h2>
+            
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">الفترة</h3>
+                <div className="flex space-x-2 space-x-reverse">
+                  <button
+                    onClick={() => setSalaryPeriod('day')}
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      salaryPeriod === 'day' 
+                        ? 'bg-primary-200 text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    اليوم
+                  </button>
+                  <button
+                    onClick={() => setSalaryPeriod('week')}
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      salaryPeriod === 'week' 
+                        ? 'bg-primary-200 text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    الأسبوع
+                  </button>
+                  <button
+                    onClick={() => setSalaryPeriod('month')}
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      salaryPeriod === 'month' 
+                        ? 'bg-primary-200 text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    الشهر
+                  </button>
+                  <button
+                    onClick={() => setSalaryPeriod('all')}
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      salaryPeriod === 'all' 
+                        ? 'bg-primary-200 text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    الكل
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {isLoadingSalary ? (
+              <div className="flex justify-center items-center h-64">
+                <LoadingSpinner />
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center space-x-3 space-x-reverse mb-2">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm text-gray-500">ساعات العمل</h3>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {salaryData?.hours_worked || 0}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center space-x-3 space-x-reverse mb-2">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <DollarSign className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm text-gray-500">الراتب بالساعة</h3>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {salaryData?.salary_per_hour || 0} ₪
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center space-x-3 space-x-reverse mb-2">
+                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                        <DollarSign className="w-5 h-5 text-primary-200" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm text-gray-500">الراتب المستحق</h3>
+                        <p className="text-2xl font-bold text-primary-200">
+                          {salaryData?.calculated_salary || 0} ₪
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">تفاصيل الحضور والانصراف</h3>
+                  
+                  {salaryData?.attendance && salaryData.attendance.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              التاريخ
+                            </th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              الحضور
+                            </th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              الانصراف
+                            </th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              المدة (ساعات)
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {salaryData.attendance.map((record, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                {formatDate(record.date)}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                {record.check_in}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                {record.check_out || 'لم يسجل'}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                {record.duration_hours || 0}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-gray-500">لا توجد سجلات حضور وانصراف في هذه الفترة</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

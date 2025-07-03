@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Calendar, Clock, CheckCircle, Users, LogIn, LogOut } from 'lucide-react'
+import { Calendar, Clock, CheckCircle, Users, LogIn, LogOut, DollarSign } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { toast } from 'react-toastify'
 import CountUp from 'react-countup'
@@ -8,9 +8,12 @@ import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { staffService } from '../../services/staffService'
+import { useAuth } from '../../contexts/AuthContext'
 
 const StaffDashboard = () => {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const [salaryPeriod, setSalaryPeriod] = useState('month')
 
   // Fetch staff schedule
   const { data: scheduleData, isLoading } = useQuery(
@@ -18,6 +21,16 @@ const StaffDashboard = () => {
     () => staffService.getStaffSchedule(),
     {
       refetchOnWindowFocus: false,
+    }
+  )
+
+  // Fetch salary information
+  const { data: salaryData, isLoading: isSalaryLoading } = useQuery(
+    ['staff-salary', salaryPeriod],
+    () => staffService.getSalaryInfo(user?.id, salaryPeriod),
+    {
+      refetchOnWindowFocus: false,
+      enabled: !!user?.id
     }
   )
 
@@ -42,6 +55,7 @@ const StaffDashboard = () => {
       onSuccess: () => {
         toast.success('تم تسجيل الانصراف بنجاح!')
         queryClient.invalidateQueries('staff-attendance')
+        queryClient.invalidateQueries(['staff-salary'])
       },
       onError: (error) => {
         toast.error(error.message || 'فشل في تسجيل الانصراف')
@@ -144,6 +158,97 @@ const StaffDashboard = () => {
               {checkOutMutation.isLoading && <LoadingSpinner size="sm" text="" />}
             </button>
           </div>
+        </motion.div>
+
+        {/* Salary Information */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="card p-6 mb-8"
+        >
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900">معلومات الراتب</h2>
+            <div className="flex space-x-2 space-x-reverse">
+              <select
+                value={salaryPeriod}
+                onChange={(e) => setSalaryPeriod(e.target.value)}
+                className="input-field text-sm py-1"
+              >
+                <option value="day">اليوم</option>
+                <option value="week">الأسبوع</option>
+                <option value="month">الشهر</option>
+                <option value="all">الكل</option>
+              </select>
+            </div>
+          </div>
+          
+          {isSalaryLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <LoadingSpinner size="sm" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-3 space-x-reverse mb-2">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm text-gray-500">ساعات العمل</h3>
+                    <p className="text-2xl font-bold text-gray-900">
+                      <CountUp 
+                        end={salaryData?.hours_worked || 0} 
+                        duration={1.5} 
+                        decimals={2}
+                        decimal="."
+                      />
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-3 space-x-reverse mb-2">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm text-gray-500">الراتب بالساعة</h3>
+                    <p className="text-2xl font-bold text-gray-900">
+                      <CountUp 
+                        end={salaryData?.salary_per_hour || 0} 
+                        duration={1.5} 
+                        decimals={2}
+                        decimal="."
+                        suffix=" ₪"
+                      />
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-3 space-x-reverse mb-2">
+                  <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-primary-200" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm text-gray-500">الراتب المستحق</h3>
+                    <p className="text-2xl font-bold text-primary-200">
+                      <CountUp 
+                        end={salaryData?.calculated_salary || 0} 
+                        duration={1.5} 
+                        decimals={2}
+                        decimal="."
+                        suffix=" ₪"
+                      />
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Stats Cards */}
