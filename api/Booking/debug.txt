@@ -1,0 +1,8 @@
+Array
+(
+    [user_id] => undefined
+    [role] => admin
+    [csrf_token] => 8e5d824f25c83b583ec5ad8d17ee1184ad1d55c8f0f363ce2bea788882b7b9ec
+    [filter] => all
+    [page] => 1
+)
