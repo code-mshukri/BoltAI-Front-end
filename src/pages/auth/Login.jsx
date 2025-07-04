@@ -113,12 +113,20 @@ const Login = () => {
                   placeholder="أدخلي كلمة المرور"
                 />
                 <button
-                  type="button"
+                    to="/register" 
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
+                <p className="text-gray-600 mt-2">
+                  <Link
+                    to="/auth/forgot-password"
+                    className="text-primary-200 hover:text-primary-300 font-medium"
+                  >
+                    نسيت كلمة المرور؟
+                  </Link>
+                </p>
               </div>
               {errors.password && (
                 <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
