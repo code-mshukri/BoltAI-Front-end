@@ -278,9 +278,13 @@ const Register = () => {
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full py-3 text-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary w-full py-3 text-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {loading ? <LoadingSpinner size="sm" text="" /> : 'إنشاء حساب'}
+              {loading ? (
+                <LoadingSpinner size="sm" text="جاري التسجيل..." />
+              ) : (
+                'إنشاء حساب'
+              )}
             </button>
           </form>
 
@@ -289,10 +293,18 @@ const Register = () => {
             <p className="text-gray-600">
               لديك حساب بالفعل؟{' '}
               <Link
-                to="/login"
+                to="/login" 
                 className="text-primary-200 hover:text-primary-300 font-medium"
               >
                 تسجيل الدخول
+              </Link>
+            </p>
+            <p className="text-gray-600 mt-2">
+              <Link
+                to="/auth/verify-email"
+                className="text-primary-200 hover:text-primary-300 font-medium"
+              >
+                تفعيل الحساب
               </Link>
             </p>
           </div>
