@@ -5,35 +5,32 @@ import { useQuery } from 'react-query'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import { useAuth } from '../../contexts/AuthContext'
 import { staffService } from '../../services/staffService'
 
 const StaffSchedule = () => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState('week') // 'week' or 'month'
+  const { user } = useAuth()
 
   // Calculate date range based on view mode - memoized to prevent recalculation
   const dateRange = useMemo(() => {
-    const start = new Date(currentDate)
-    const end = new Date(currentDate)
+    const base = new Date(currentDate)
+    const day = base.getDay()
 
-    if (viewMode === 'week') {
-      // Get start of week (Saturday)
-      const dayOfWeek = start.getDay()
-      const diff = start.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1) - 1 // Adjust for Saturday start
-      start.setDate(diff)
-      end.setDate(start.getDate() + 6)
-    } else {
-      // Get start and end of month
-      start.setDate(1)
-      end.setMonth(end.getMonth() + 1)
-      end.setDate(0)
-    }
+    // Get Saturday (start of week)
+    const start = new Date(base)
+    start.setDate(base.getDate() - ((day + 1) % 7))
+
+    // Get Friday (end of week)
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
 
     return {
       from: start.toISOString().split('T')[0],
       to: end.toISOString().split('T')[0]
     }
-  }, [currentDate, viewMode])
+  }, [currentDate])
 
   // Fetch staff schedule with proper query keys for caching
   const { 
@@ -42,8 +39,8 @@ const StaffSchedule = () => {
     isError, 
     refetch 
   } = useQuery(
-    ['staff-schedule', dateRange.from, dateRange.to, viewMode],
-    () => staffService.getStaffSchedule(null, dateRange.from, dateRange.to),
+    ['staff-schedule', dateRange.from, dateRange.to, viewMode, user?.id],
+    () => staffService.getStaffSchedule(user?.id, dateRange.from, dateRange.to),
     {
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5 minutes
@@ -55,7 +52,29 @@ const StaffSchedule = () => {
     }
   )
 
-  const schedule = scheduleData?.data || {}
+  // Process schedule data into a date-keyed object
+  const schedule = useMemo(() => {
+    const grouped = {}
+    
+    // Handle both possible data structures
+    const appointments = scheduleData?.data || []
+    
+    if (Array.isArray(appointments)) {
+      // If data is an array of appointments
+      appointments.forEach(appt => {
+        const date = appt.date || appt.appointment_date
+        if (date) {
+          if (!grouped[date]) grouped[date] = []
+          grouped[date].push(appt)
+        }
+      })
+    } else if (typeof appointments === 'object') {
+      // If data is already grouped by date
+      return appointments
+    }
+    
+    return grouped
+  }, [scheduleData])
 
   // Memoized navigation function to prevent unnecessary re-renders
   const navigateDate = useCallback((direction) => {
@@ -184,7 +203,7 @@ const StaffSchedule = () => {
               
               <h2 className="text-xl font-bold text-gray-900">
                 {viewMode === 'week' 
-                  ? `أسبوع ${formatDate(new Date(dateRange.from)).split('،')[0]}`
+                  ? `الأسبوع من ${new Date(dateRange.from).toLocaleDateString('ar-EG')} إلى ${new Date(dateRange.to).toLocaleDateString('ar-EG')}`
                   : formatDate(currentDate).split('،')[1]
                 }
               </h2>
@@ -223,7 +242,7 @@ const StaffSchedule = () => {
             transition={{ delay: 0.2 }}
             className="grid grid-cols-1 lg:grid-cols-7 gap-4"
           >
-            {weekDays.map((day, index) => {
+            {weekDays.map((day) => {
               const dayKey = day.toISOString().split('T')[0]
               const dayAppointments = schedule[dayKey] || []
               const isToday = dayKey === new Date().toISOString().split('T')[0]
@@ -246,12 +265,12 @@ const StaffSchedule = () => {
                     {dayAppointments.length > 0 ? (
                       dayAppointments.map((appointment) => (
                         <div
-                          key={appointment.id}
+                          key={appointment.appointment_id}
                           className="p-3 bg-gray-50 rounded-lg border-r-4 border-primary-200"
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-sm font-medium text-gray-900">
-                              {appointment.appointment_time}
+                              {appointment.time || appointment.appointment_time}
                             </span>
                             <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(appointment.status)}`}>
                               {getStatusLabel(appointment.status)}
@@ -307,12 +326,12 @@ const StaffSchedule = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {appointments.map((appointment) => (
                           <div
-                            key={appointment.id}
+                            key={appointment.appointment_id}
                             className="p-3 bg-gray-50 rounded-lg"
                           >
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium text-gray-900">
-                                {appointment.appointment_time}
+                                {appointment.time || appointment.appointment_time}
                               </span>
                               <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(appointment.status)}`}>
                                 {getStatusLabel(appointment.status)}
