@@ -11,7 +11,7 @@ import { useForm } from 'react-hook-form'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
-import { staffService } from '../../services/staffService'
+import { manageStaff } from '../../services/manageStaff'
 import { useAuth } from '../../contexts/AuthContext'
 
 const AdminStaff = () => {
@@ -52,7 +52,7 @@ const AdminStaff = () => {
     refetch 
   } = useQuery(
     ['staff-list', currentPage],
-    () => staffService.getStaffList(currentPage, itemsPerPage),
+    () => manageStaff.getStaffList(currentPage, itemsPerPage),
     {
       refetchOnWindowFocus: false,
       keepPreviousData: true,
@@ -70,7 +70,7 @@ const AdminStaff = () => {
     refetch: refetchSchedule
   } = useQuery(
     ['staff-schedule', selectedStaffSchedule?.staff_id],
-    () => staffService.getStaffSchedule(selectedStaffSchedule?.staff_id),
+    () => manageStaff.getStaffSchedule(selectedStaffSchedule?.staff_id),
     {
       enabled: !!selectedStaffSchedule?.staff_id,
       refetchOnWindowFocus: false,
@@ -88,7 +88,7 @@ const AdminStaff = () => {
     refetch: refetchSalary
   } = useQuery(
     ['staff-salary', selectedStaff?.staff_id, salaryPeriod],
-    () => staffService.getSalaryInfo(selectedStaff?.staff_id, salaryPeriod),
+    () => manageStaff.getSalaryInfo(selectedStaff?.staff_id, salaryPeriod),
     {
       enabled: !!selectedStaff?.staff_id && showSalaryModal,
       refetchOnWindowFocus: false,
@@ -101,7 +101,7 @@ const AdminStaff = () => {
 
   // Create staff mutation
   const createStaffMutation = useMutation(
-    (staffData) => staffService.createStaff(staffData),
+    (staffData) => manageStaff.createStaff(staffData),
     {
       onSuccess: () => {
         toast.success('تم إضافة الموظف بنجاح')
@@ -117,7 +117,7 @@ const AdminStaff = () => {
 
   // Update staff mutation
   const updateStaffMutation = useMutation(
-    (staffData) => staffService.updateStaffDetails(staffData),
+    (staffData) => manageStaff.updateStaffDetails(staffData),
     {
       onSuccess: () => {
         toast.success('تم تحديث بيانات الموظف بنجاح')

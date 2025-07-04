@@ -15,32 +15,31 @@ export const manageStaff = {
   },
 
   async createStaff(staffData) {
-  const userData = JSON.parse(localStorage.getItem('user_data') || '{}')
-  const formData = new FormData()
+    const userData = JSON.parse(localStorage.getItem('user_data') || '{}')
+    const formData = new FormData()
 
-  // Required fields
-  formData.append('full_name', staffData.full_name)
-  formData.append('email', staffData.email)
-  formData.append('password', staffData.password)
-  formData.append('password_confirm', staffData.password_confirm)
-  formData.append('phone', staffData.phone)
-  formData.append('dob', staffData.dob)
+    // Required fields
+    formData.append('full_name', staffData.full_name)
+    formData.append('email', staffData.email)
+    formData.append('password', staffData.password)
+    formData.append('password_confirm', staffData.password_confirm)
+    formData.append('phone', staffData.phone)
+    formData.append('dob', staffData.dob)
 
-  // Optional fields
-  formData.append('salary_per_hour', staffData.salary_per_hour || 0)
-  formData.append('notes', staffData.notes || '')
+    // Optional fields
+    formData.append('salary_per_hour', staffData.salary_per_hour || 0)
+    formData.append('notes', staffData.notes || '')
 
-  // Auth
-  formData.append('user_id', userData.id || '')
-  formData.append('role', userData.role || '')
+    // Auth
+    formData.append('user_id', userData.id || '')
+    formData.append('role', userData.role || '')
 
-  return await api.post('/Staff/createStaff.php', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
-},
-
+    return await api.post('/Staff/createStaff.php', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
 
   async updateStaffDetails(staffData) {
     const userData = JSON.parse(localStorage.getItem('user_data') || '{}')
@@ -52,9 +51,6 @@ export const manageStaff = {
 
     formData.append('user_id', userData.id || '')
     formData.append('role', userData.role || '')
-
-    console.log('[DEBUG] Sending FormData:', [...formData.entries()])
-
 
     return await api.post('/Staff/updateStaffDetails.php', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
